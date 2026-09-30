@@ -1,10 +1,10 @@
-from contextlib import redirect_stdout, redirect_stderr
-from copy import deepcopy
 import io
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from copy import deepcopy
+from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
@@ -41,7 +41,12 @@ class PlannerTests(unittest.TestCase):
     def test_sufficient_briefing_preserved_without_questions(self):
         briefing = (ROOT / "examples/estoque.md").read_text(encoding="utf-8")
         model = FakeModel(reply())
-        result = build_plan(briefing, model, ask=lambda _: self.fail("Pergunta inesperada"), tell=lambda _: None)
+        result = build_plan(
+            briefing,
+            model,
+            ask=lambda _: self.fail("Pergunta inesperada"),
+            tell=lambda _: None,
+        )
         validate_export(result)
         self.assertEqual(result["request_context"]["briefing_markdown"], briefing)
         self.assertEqual(result["request_context"]["clarifications"], [])
@@ -52,7 +57,9 @@ class PlannerTests(unittest.TestCase):
         final = reply()
         final["plan"]["gaps"] = []
         model = FakeModel(reply(["Qual setor?"]), final)
-        result = build_plan("Investigar estoque.", model, ask=lambda _: "", tell=lambda _: None)
+        result = build_plan(
+            "Investigar estoque.", model, ask=lambda _: "", tell=lambda _: None
+        )
         self.assertIn("Esclarecimento pendente: Qual setor?", result["gaps"])
         self.assertIsNone(result["request_context"]["clarifications"][0]["answer"])
         self.assertIn("Qual setor?", markdown(result))
@@ -61,25 +68,43 @@ class PlannerTests(unittest.TestCase):
         for limit in (0, 1, 2, 3, 5):
             with self.subTest(limit=limit), tempfile.TemporaryDirectory() as tmp:
                 path = Path(tmp) / "configs.toml"
-                path.write_text(f"[planner]\nmax_clarification_rounds = {limit}\n", encoding="utf-8")
+                path.write_text(
+                    f"[planner]\nmax_clarification_rounds = {limit}\n", encoding="utf-8"
+                )
                 config = load_config(path)
-                model = FakeModel(*(reply([f"Pendência {i}?"]) for i in range(limit + 1)))
+                model = FakeModel(
+                    *(reply([f"Pendência {i}?"]) for i in range(limit + 1))
+                )
                 answers = []
 
                 def ask(prompt):
                     answers.append(prompt)
                     return "Informação do analista"
 
-                result = build_plan("Estoque.", model, config.max_clarification_rounds, ask, lambda _: None)
+                result = build_plan(
+                    "Estoque.",
+                    model,
+                    config.max_clarification_rounds,
+                    ask,
+                    lambda _: None,
+                )
                 self.assertEqual(len(answers), limit)
-                self.assertEqual([c[1] for c in model.calls], list(range(limit, -1, -1)))
-                self.assertEqual(len(result["request_context"]["clarifications"]), limit)
-                self.assertIn(f"Esclarecimento pendente: Pendência {limit}?", result["gaps"])
+                self.assertEqual(
+                    [c[1] for c in model.calls], list(range(limit, -1, -1))
+                )
+                self.assertEqual(
+                    len(result["request_context"]["clarifications"]), limit
+                )
+                self.assertIn(
+                    f"Esclarecimento pendente: Pendência {limit}?", result["gaps"]
+                )
 
     def test_three_questions_are_one_round_and_answers_reach_model(self):
         model = FakeModel(reply(["Setor?", "País?", "Período?"]), reply())
         answers = iter(["Sem restrição", "Brasil", "Sem corte temporal"])
-        result = build_plan("Estoque.", model, 1, lambda _: next(answers), lambda _: None)
+        result = build_plan(
+            "Estoque.", model, 1, lambda _: next(answers), lambda _: None
+        )
         history = result["request_context"]["clarifications"]
         self.assertEqual([h["round"] for h in history], [1, 1, 1])
         self.assertEqual(model.calls[1][0]["clarifications"], history)
@@ -96,20 +121,42 @@ class PlannerTests(unittest.TestCase):
 
                 result = build_plan("Estoque.", model, ask=ask, tell=lambda _: None)
                 self.assertEqual(model.calls[-1][1], 0)
-                self.assertEqual([h["answer"] for h in result["request_context"]["clarifications"]], [None, None])
-                self.assertTrue(all(any(q in g for g in result["gaps"]) for q in ["Setor?", "País?"]))
+                self.assertEqual(
+                    [h["answer"] for h in result["request_context"]["clarifications"]],
+                    [None, None],
+                )
+                self.assertTrue(
+                    all(
+                        any(q in g for g in result["gaps"]) for q in ["Setor?", "País?"]
+                    )
+                )
 
     def test_repeated_skipped_question_is_not_asked_again(self):
         model = FakeModel(reply(["Setor?"]), reply(["Setor?"]))
         prompts = []
-        result = build_plan("Estoque.", model, ask=lambda q: prompts.append(q) or "", tell=lambda _: None)
+        result = build_plan(
+            "Estoque.",
+            model,
+            ask=lambda q: prompts.append(q) or "",
+            tell=lambda _: None,
+        )
         self.assertEqual(len(prompts), 1)
         self.assertIn("Esclarecimento pendente: Setor?", result["gaps"])
 
     def test_fully_undefined_plan_requires_gaps(self):
-        minimal = {"central_question": None, "scope": {"inclusion": [], "exclusion": []},
-                   "subquestions": [], "concepts": [], "strategies": [], "gaps": ["Tema não definido."]}
-        result = build_plan("Pesquisar algo.", FakeModel({"questions": [], "plan": minimal}), tell=lambda _: None)
+        minimal = {
+            "central_question": None,
+            "scope": {"inclusion": [], "exclusion": []},
+            "subquestions": [],
+            "concepts": [],
+            "strategies": [],
+            "gaps": ["Tema não definido."],
+        }
+        result = build_plan(
+            "Pesquisar algo.",
+            FakeModel({"questions": [], "plan": minimal}),
+            tell=lambda _: None,
+        )
         validate_export(result)
         result["gaps"] = []
         with self.assertRaises(ValueError):
@@ -129,7 +176,12 @@ class PlannerTests(unittest.TestCase):
                 del broken["strategies"][0][key]
                 with self.assertRaises(ValueError):
                     validate_export(broken)
-        for key, value in [("status", "tested"), ("purpose", ""), ("destination", 12), ("expression", [])]:
+        for key, value in [
+            ("status", "tested"),
+            ("purpose", ""),
+            ("destination", 12),
+            ("expression", []),
+        ]:
             with self.subTest(key=key):
                 broken = deepcopy(original)
                 broken["strategies"][0][key] = value
@@ -137,12 +189,18 @@ class PlannerTests(unittest.TestCase):
                     validate_export(broken)
 
     def test_invalid_config_and_input(self):
-        invalid = ['[planner]\nmax_clarification_rounds = -1',
-                   '[planner]\nmax_clarification_rounds = true',
-                   '[planner]\nmax_clarification_rounds = 1.5',
-                   '[planner]\nmax_rounds = 3', '[model]\nname = ""',
-                   '[model]\ntimeout_seconds = 0', '[model]\nmax_output_tokens = 0',
-                   '[unknown]\na = 1', 'planner = 4', 'invalid toml']
+        invalid = [
+            "[planner]\nmax_clarification_rounds = -1",
+            "[planner]\nmax_clarification_rounds = true",
+            "[planner]\nmax_clarification_rounds = 1.5",
+            "[planner]\nmax_rounds = 3",
+            '[model]\nname = ""',
+            "[model]\ntimeout_seconds = 0",
+            "[model]\nmax_output_tokens = 0",
+            "[unknown]\na = 1",
+            "planner = 4",
+            "invalid toml",
+        ]
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "configs.toml"
             for raw in invalid:
@@ -172,42 +230,119 @@ class PlannerTests(unittest.TestCase):
             self.assertEqual(data.read_bytes(), before)
 
     def test_cli_interactive_review_and_render_without_credentials(self):
-        with tempfile.TemporaryDirectory() as tmp, redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()),
+        ):
             output = Path(tmp) / "run"
             model = FakeModel(reply(["Setor?"]), reply())
-            with patch("research_planner.cli.OpenAIModel", return_value=model), patch("builtins.input", side_effect=["Sem restrição", "s"]):
-                code = main(["plan", str(ROOT / "examples/estoque.md"), "--config", str(ROOT / "configs.toml"), "--output", str(output)])
+            with (
+                patch("research_planner.cli.OpenAIModel", return_value=model),
+                patch("builtins.input", side_effect=["Sem restrição", "s"]),
+            ):
+                code = main(
+                    [
+                        "plan",
+                        str(ROOT / "examples/estoque.md"),
+                        "--config",
+                        str(ROOT / "configs.toml"),
+                        "--output",
+                        str(output),
+                    ]
+                )
             self.assertEqual(code, 0)
             document = load_json((output / "plan.json").read_text(encoding="utf-8"))
             self.assertEqual(document["review_status"], "reviewed")
             document["central_question"] = "Pergunta revista pelo analista?"
             (output / "plan.json").write_text(json.dumps(document), encoding="utf-8")
-            with patch("research_planner.cli.OpenAIModel", side_effect=AssertionError("Rede proibida")):
-                self.assertEqual(main(["render", str(output / "plan.json"), "--output", str(Path(tmp) / "edited")]), 0)
-            self.assertIn("Pergunta revista", (Path(tmp) / "edited/plan.md").read_text(encoding="utf-8"))
+            with patch(
+                "research_planner.cli.OpenAIModel",
+                side_effect=AssertionError("Rede proibida"),
+            ):
+                self.assertEqual(
+                    main(
+                        [
+                            "render",
+                            str(output / "plan.json"),
+                            "--output",
+                            str(Path(tmp) / "edited"),
+                        ]
+                    ),
+                    0,
+                )
+            self.assertIn(
+                "Pergunta revista",
+                (Path(tmp) / "edited/plan.md").read_text(encoding="utf-8"),
+            )
 
     def test_cli_invalid_input_fails_before_model(self):
-        with tempfile.TemporaryDirectory() as tmp, redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()),
+        ):
             empty = Path(tmp) / "empty.md"
             empty.write_text("", encoding="utf-8")
-            with patch("research_planner.cli.OpenAIModel", side_effect=AssertionError("Não chamar modelo")):
-                self.assertEqual(main(["plan", str(empty), "--config", str(ROOT / "configs.toml"), "--output", str(Path(tmp) / "run")]), 2)
-                self.assertEqual(main(["plan", "absent.md", "--config", str(ROOT / "configs.toml"), "--output", str(Path(tmp) / "run")]), 2)
+            with patch(
+                "research_planner.cli.OpenAIModel",
+                side_effect=AssertionError("Não chamar modelo"),
+            ):
+                self.assertEqual(
+                    main(
+                        [
+                            "plan",
+                            str(empty),
+                            "--config",
+                            str(ROOT / "configs.toml"),
+                            "--output",
+                            str(Path(tmp) / "run"),
+                        ]
+                    ),
+                    2,
+                )
+                self.assertEqual(
+                    main(
+                        [
+                            "plan",
+                            "absent.md",
+                            "--config",
+                            str(ROOT / "configs.toml"),
+                            "--output",
+                            str(Path(tmp) / "run"),
+                        ]
+                    ),
+                    2,
+                )
             self.assertFalse((Path(tmp) / "run").exists())
 
 
 class ModelTests(unittest.TestCase):
     def call(self, body):
-        with patch.dict("os.environ", {"OPENAI_API_KEY": "test-secret"}), patch("research_planner.model.build_opener") as opener:
-            opener.return_value.open.return_value.__enter__.return_value.read.return_value = json.dumps(body).encode()
-            result = OpenAIModel(Config()).generate({"briefing_markdown": "Estoque", "clarifications": []}, 3)
+        with (
+            patch.dict("os.environ", {"OPENAI_API_KEY": "test-secret"}),
+            patch("research_planner.model.build_opener") as opener,
+        ):
+            opener.return_value.open.return_value.__enter__.return_value.read.return_value = json.dumps(
+                body
+            ).encode()
+            result = OpenAIModel(Config()).generate(
+                {"briefing_markdown": "Estoque", "clarifications": []}, 3
+            )
             request = opener.return_value.open.call_args.args[0]
             return result, json.loads(request.data)
 
     def test_responses_transport_and_no_tools(self):
-        body = {"status": "completed", "output": [
-            {"type": "reasoning", "summary": []},
-            {"type": "message", "content": [{"type": "output_text", "text": json.dumps(reply())}]}]}
+        body = {
+            "status": "completed",
+            "output": [
+                {"type": "reasoning", "summary": []},
+                {
+                    "type": "message",
+                    "content": [{"type": "output_text", "text": json.dumps(reply())}],
+                },
+            ],
+        }
         result, payload = self.call(body)
         self.assertEqual(result, reply())
         self.assertEqual(payload["model"], "gpt-6-sol")
@@ -219,9 +354,28 @@ class ModelTests(unittest.TestCase):
     def test_refusal_incomplete_bad_json_and_bad_contract(self):
         for body in [
             {"status": "incomplete", "output": []},
-            {"status": "completed", "output": [{"type": "message", "content": [{"type": "refusal"}]}]},
-            {"status": "completed", "output": [{"type": "message", "content": [{"type": "output_text", "text": "not json"}]}]},
-            {"status": "completed", "output": [{"type": "message", "content": [{"type": "output_text", "text": "{}"}]}]},
+            {
+                "status": "completed",
+                "output": [{"type": "message", "content": [{"type": "refusal"}]}],
+            },
+            {
+                "status": "completed",
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [{"type": "output_text", "text": "not json"}],
+                    }
+                ],
+            },
+            {
+                "status": "completed",
+                "output": [
+                    {
+                        "type": "message",
+                        "content": [{"type": "output_text", "text": "{}"}],
+                    }
+                ],
+            },
             {"status": "completed", "output": [None]},
         ]:
             with self.subTest(body=body), self.assertRaises(ModelError):
@@ -230,13 +384,22 @@ class ModelTests(unittest.TestCase):
     def test_missing_key_and_transport_errors_redacted(self):
         with patch.dict("os.environ", {}, clear=True), self.assertRaises(ModelError):
             OpenAIModel(Config())
-        for error in (HTTPError("url", 401, "test-secret", {}, None), URLError("test-secret"), TimeoutError("test-secret")):
-            with patch.dict("os.environ", {"OPENAI_API_KEY": "test-secret"}), patch("research_planner.model.build_opener") as opener:
+        for error in (
+            HTTPError("url", 401, "test-secret", {}, None),
+            URLError("test-secret"),
+            TimeoutError("test-secret"),
+        ):
+            with (
+                patch.dict("os.environ", {"OPENAI_API_KEY": "test-secret"}),
+                patch("research_planner.model.build_opener") as opener,
+            ):
                 opener.return_value.open.side_effect = error
                 with self.assertRaises(ModelError) as caught:
                     OpenAIModel(Config()).generate({}, 0)
                 self.assertNotIn("test-secret", str(caught.exception))
-        self.assertIsNone(NoRedirect().redirect_request(None, None, 302, "", {}, "https://elsewhere"))
+        self.assertIsNone(
+            NoRedirect().redirect_request(None, None, 302, "", {}, "https://elsewhere")
+        )
 
 
 if __name__ == "__main__":

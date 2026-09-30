@@ -9,7 +9,59 @@ conclui causas ou recomenda empresas. Nenhum dos outros módulos é necessário.
 
 Python **3.11 ou superior**; recomenda-se Python 3.12 nesta entrega, verificada
 localmente em **3.12.14**. Não há dependências de execução externas à biblioteca
-padrão. `setuptools>=68` é usado apenas para instalar o pacote.
+padrão. `setuptools>=68` é usado apenas para instalar o pacote. Ruff **0.16.9**
+é uma dependência de desenvolvimento, instalada pelo bootstrap.
+
+### Bootstrap recomendado
+
+No Windows PowerShell:
+
+```powershell
+.\bootstrap.ps1
+```
+
+No Linux/macOS com Bash:
+
+```bash
+bash bootstrap.sh
+```
+
+Os scripts têm comportamento equivalente: ambos executam `scripts/bootstrap.py`,
+a partir da raiz do repositório, mesmo quando chamados de outro diretório. Eles:
+
+1. Localizam Python >= 3.11 e criam ou reutilizam `.venv`.
+2. Criam `user/user_prompt.md` e `user/output.md` vazios **somente se não existirem**.
+3. Instalam o pacote editável com dependências de desenvolvimento (`.[dev]`).
+4. Executam `pip check`, testes locais, `ruff check .`, `ruff format --check .`
+   e uma verificação do CLI (`--help`), interrompendo em caso de falha.
+
+O bootstrap pode ser repetido sem apagar o briefing ou saídas existentes. Ele
+não ativa o ambiente no terminal pai, não altera formatação automaticamente e
+não chama o modelo. A instalação de dependências requer acesso ao índice de pacotes.
+A pasta `user/` fica na raiz **deste repositório**, não em `/user` do sistema,
+e está ignorada pelo Git.
+
+Depois de preencher `user/user_prompt.md`, execute no PowerShell:
+
+```powershell
+$env:OPENAI_API_KEY = 'sua-chave'
+.\.venv\Scripts\python.exe -m research_planner
+```
+
+Ou no Bash:
+
+```bash
+export OPENAI_API_KEY='sua-chave'
+./.venv/bin/python -m research_planner
+```
+
+Sem argumentos, o comando usa `user/user_prompt.md` e salva em
+**`user/output.md` e `user/output.json`, sobrescrevendo qualquer conteúdo anterior**
+após uma geração válida. O mesmo vale para `research-planner plan` sem caminhos.
+`output.json` é criado na primeira exportação. Falhas de entrada/modelo não apagam
+a saída anterior. O briefing não é sobrescrito.
+
+### Instalação manual alternativa
 
 Na raiz do repositório, Linux/macOS:
 
@@ -41,9 +93,15 @@ Para seu briefing real:
 research-planner plan minha_demanda.md --config configs.toml --output runs/minha-pesquisa
 ```
 
-Os caminhos são relativos ao diretório atual. A configuração deve existir; o
-programa não ignora silenciosamente um caminho incorreto. A saída deve ser uma
-pasta **nova**. Para outra versão, escolha outro nome.
+Na instalação editável criada pelo bootstrap, os caminhos padrão são relativos
+à raiz do checkout, mesmo ao executar o CLI de outro diretório. Em uma instalação
+por wheel, são relativos ao diretório atual. Caminhos informados explicitamente
+são relativos ao diretório atual. A configuração deve existir; um caminho incorreto
+não é ignorado silenciosamente.
+
+`--output resultado.md` sobrescreve esse Markdown e o JSON de mesmo nome.
+O formato anterior `--output runs/minha-pesquisa` continua disponível: ele exige
+uma pasta **nova** e cria `plan.md`/`plan.json`, preservando versões existentes.
 
 ## Esclarecimentos e revisão
 
@@ -58,12 +116,16 @@ pasta **nova**. Para outra versão, escolha outro nome.
    novas solicitações humanas. Perguntas idênticas já feitas não são repetidas.
 4. O plano completo aparece no terminal. Responder `s` à pergunta de revisão
    registra `review_status = "reviewed"`; Enter ou EOF mantém `pending`.
-5. São exportados **`plan.md` e `plan.json`**. Ambos contêm as mesmas informações.
+5. São exportados **`user/output.md` e `user/output.json`** por padrão, substituindo
+   a versão anterior. Com `--output` apontando para um diretório novo, os nomes
+   continuam `plan.md` e `plan.json`. Ambos contêm as mesmas informações.
    Revisão concluída não significa evidência validada nem expressão testada.
 
 Para alterar o conteúdo, edite o JSON em seu editor e reexporte:
 
 ```bash
+research-planner render user/output.json
+# Ou exporte para outra pasta, preservando a versão anterior:
 research-planner render runs/minha-pesquisa/plan.json --output runs/minha-pesquisa-revisada
 ```
 
@@ -148,15 +210,20 @@ na instalação. O resultado real é variável e requer revisão.
 
 ## Testes
 
-Sem credenciais ou rede:
+Sem credenciais ou rede, após instalar `.[dev]`:
 
 ```bash
 python -m unittest discover -s tests -p 'test_*.py' -v
+python -m ruff check .
+python -m ruff format --check .
 ```
 
 Testam briefing suficiente, lacuna persistente, limites de rodadas, respostas
 humanas enviadas ao modelo, `/fim`, EOF, entradas/configurações inválidas, contrato
 JSON, revisão e reexportação, preservação de arquivos e transporte HTTP simulado.
+Também verificam entrada/saída padrão, sobrescrita de saídas com conteúdo arbitrário,
+preservação do briefing e da saída após falhas, repetição do preparo de `user/`
+e interrupção do bootstrap quando uma etapa falha.
 
 Teste real separado e opt-in, sujeito a custo, usando `configs.toml`:
 
@@ -179,7 +246,8 @@ testa buscas. Veja **`registro.md`** para a execução efetivamente realizada.
 
 `src/research_planner/` separa configuração, cliente HTTP, planejamento, validação,
 exportação e CLI. `tests/` contém a suíte local e o teste real opcional; `examples/`
-contém o briefing e o plano didático.
+contém o briefing e o plano didático. `bootstrap.ps1` e `bootstrap.sh` delegam o
+preparo comum a `scripts/bootstrap.py`; `user/` contém os arquivos locais do analista.
 
 A biblioteca padrão (`argparse`, `tomllib`, `urllib`, `json`, `unittest`) basta
 para esta entrega. Isso reduz instalação e dependências, ao custo de manter um

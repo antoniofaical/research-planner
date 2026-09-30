@@ -112,3 +112,53 @@ não é um verificador factual. Markdown não é importado de volta para JSON.
 Não há salvamento parcial da sessão antes da exportação nem retry automático;
 falha de API/cancelamento exige reiniciar e repetir esclarecimentos. Isso mantém
 o incremento pequeno, sem histórico de sessões ou infraestrutura adicional.
+
+## Incremento: bootstraps e arquivos padrão
+
+Inspeção inicial deste incremento: checkout limpo em `3446009`, `main` alinhada
+ao remoto após `git fetch origin`, sem novas instruções locais. Os arquivos e
+exemplos anteriores foram preservados; mudanças mecânicas nos fontes existentes
+adequam imports e formatação às verificações Ruff agora exigidas.
+
+Implementado:
+
+- `bootstrap.sh` e `bootstrap.ps1` com comportamento equivalente, delegando a
+  `scripts/bootstrap.py` para evitar divergência entre plataformas.
+- Localização de Python >= 3.11, criação/reuso de `.venv`, instalação editável
+  com `.[dev]`, `pip check`, testes locais, Ruff lint/formatação e CLI `--help`.
+- Criação de `user/user_prompt.md` e `user/output.md` vazios se ausentes, sem
+  alterar conteúdo preexistente ao executar novamente o bootstrap.
+- Comando sem argumentos equivalente a `plan`, lendo `user/user_prompt.md` e
+  substituindo `user/output.md` e `user/output.json` após geração válida. Na
+  instalação editável, os padrões são resolvidos na raiz do checkout.
+- Escritas preparadas em temporários antes de substituir cada arquivo de saída;
+  conteúdo anterior inválido não impede overwrite. Briefing preservado.
+- `--output arquivo.md` também sobrescreve seu par `.md`/`.json`; a opção anterior
+  de diretório novo continua disponível. `user/` e cache Ruff ignorados pelo Git.
+- Ruff fixado em **0.16.9** como dependência de desenvolvimento, sem nova
+  dependência de execução. README atualizado com os dois fluxos de uso.
+
+Verificações efetivamente executadas em Python 3.12.14 / Linux:
+
+| Comando/cenário | Resultado |
+| --- | --- |
+| `python -m venv .venv` e `.venv/bin/python -m pip install -e '.[dev]'` | Ambiente e Ruff instalados. |
+| `.venv/bin/python -m ruff check --fix .` e `ruff format .` | Imports e formatação ajustados durante desenvolvimento. O bootstrap apenas verifica. |
+| `bash -n bootstrap.sh` | Sintaxe Bash válida. |
+| `bash bootstrap.sh` com `.venv` já existente | Fluxo completo aprovado; arquivos de usuário criados. |
+| `python -m unittest discover -s tests -p 'test_*.py' -v` via bootstrap | **22 testes passaram**, sem falhas/erros/skips. |
+| `python -m pip check`, `python -m ruff check .`, `python -m ruff format --check .` via bootstrap | Todas as verificações passaram. |
+| Bootstrap em cópia limpa, sem `.venv`, caminho com espaços e CWD externo | Ambiente criado e fluxo completo aprovado, incluindo os 22 testes. |
+| `python -m research_planner render <exemplo>` nessa cópia, a partir de outro diretório | Exportou os padrões dentro de `user/` da cópia, substituindo o Markdown vazio. |
+| `git diff --cached --check` | Sem erros de whitespace. |
+
+Os sete novos testes cobrem defaults, overwrite de conteúdo arbitrário (incluindo
+JSON inválido), preservação em falha do modelo/validação, recusa de usar o briefing
+como saída, render sem API, criação repetível de arquivos e interrupção do bootstrap
+quando uma etapa falha. Os testes existentes seguem passando.
+
+**Limites:** não há PowerShell neste ambiente, portanto `bootstrap.ps1` não foi
+executado nativamente. A rotina Python compartilhada foi executada integralmente;
+isso não equivale a um teste do launcher no Windows. Não houve chamada real ao
+modelo nem consultas bibliográficas neste incremento. Os bootstraps não fazem
+chamadas ao modelo nem executam o teste opt-in pago.

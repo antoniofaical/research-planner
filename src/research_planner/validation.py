@@ -2,7 +2,14 @@
 
 import json
 
-PLAN_KEYS = {"central_question", "scope", "subquestions", "concepts", "strategies", "gaps"}
+PLAN_KEYS = {
+    "central_question",
+    "scope",
+    "subquestions",
+    "concepts",
+    "strategies",
+    "gaps",
+}
 EXPORT_KEYS = PLAN_KEYS | {"request_context", "review_status"}
 
 
@@ -40,15 +47,20 @@ def validate_plan(plan):
         text(concept["concept"], "concept")
         texts(concept["synonyms"], "synonyms")
     for strategy in plan["strategies"]:
-        object_keys(strategy, {"expression", "purpose", "destination", "status"}, "strategies[]")
+        object_keys(
+            strategy, {"expression", "purpose", "destination", "status"}, "strategies[]"
+        )
         for key in ("expression", "purpose"):
             text(strategy[key], key)
         if strategy["destination"] is not None:
             text(strategy["destination"], "destination")
         if strategy["status"] != "proposed_untested":
             raise ValueError("Toda expressão deve ter status proposed_untested.")
-    if (plan["central_question"] is None or not plan["strategies"]
-            or not plan["scope"]["inclusion"]) and not plan["gaps"]:
+    if (
+        plan["central_question"] is None
+        or not plan["strategies"]
+        or not plan["scope"]["inclusion"]
+    ) and not plan["gaps"]:
         raise ValueError("Plano incompleto exige uma lacuna explícita em gaps.")
 
 
@@ -65,7 +77,10 @@ def validate_export(document):
     previous_round = 0
     for item in context["clarifications"]:
         object_keys(item, {"round", "question", "answer"}, "clarifications[]")
-        if type(item["round"]) is not int or not 1 <= item["round"] <= previous_round + 1:
+        if (
+            type(item["round"]) is not int
+            or not 1 <= item["round"] <= previous_round + 1
+        ):
             raise ValueError("Rodadas devem ser positivas, consecutivas e ordenadas.")
         if item["round"] < previous_round:
             raise ValueError("Rodadas fora de ordem.")
@@ -87,4 +102,6 @@ def load_json(raw):
     def reject_constant(value):
         raise ValueError(f"Constante JSON inválida: {value}.")
 
-    return json.loads(raw, object_pairs_hook=unique_pairs, parse_constant=reject_constant)
+    return json.loads(
+        raw, object_pairs_hook=unique_pairs, parse_constant=reject_constant
+    )

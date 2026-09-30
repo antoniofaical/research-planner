@@ -19,7 +19,11 @@ def build_plan(briefing, model, max_rounds=3, ask=None, tell=None):
     stopped = False
     while True:
         remaining = 0 if stopped else max_rounds - rounds
-        tell("Elaborando plano..." if not rounds else "Atualizando plano com os esclarecimentos...")
+        tell(
+            "Elaborando plano..."
+            if not rounds
+            else "Atualizando plano com os esclarecimentos..."
+        )
         reply = validate_reply(model.generate(deepcopy(context), remaining))
         questions = reply["questions"]
         new_questions = [q for q in questions if q not in asked]
@@ -27,7 +31,9 @@ def build_plan(briefing, model, max_rounds=3, ask=None, tell=None):
             pending.extend(questions)
             break
         rounds += 1
-        tell(f"Rodada {rounds}/{max_rounds}. Enter pula; /fim encerra os esclarecimentos.")
+        tell(
+            f"Rodada {rounds}/{max_rounds}. Enter pula; /fim encerra os esclarecimentos."
+        )
         for question in new_questions:
             answer = ""
             if not stopped:
@@ -39,7 +45,8 @@ def build_plan(briefing, model, max_rounds=3, ask=None, tell=None):
                     answer = ""
                     stopped = True
             context["clarifications"].append(
-                {"round": rounds, "question": question, "answer": answer or None})
+                {"round": rounds, "question": question, "answer": answer or None}
+            )
             asked.add(question)
             if not answer:
                 pending.append(question)

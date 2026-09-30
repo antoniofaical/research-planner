@@ -59,37 +59,58 @@ class OpenAIModel:
         self.config = config
         self.key = os.environ.get(config.api_key_env, "").strip()
         if not self.key:
-            raise ModelError(f"Defina a variável de ambiente {config.api_key_env} com sua chave de API.")
+            raise ModelError(
+                f"Defina a variável de ambiente {config.api_key_env} com sua chave de API."
+            )
 
     def generate(self, context, remaining_rounds):
         payload = {
             "model": self.config.model,
             "instructions": INSTRUCTIONS,
-            "input": json.dumps({"request_context": context,
-                                 "remaining_rounds": remaining_rounds}, ensure_ascii=False),
+            "input": json.dumps(
+                {"request_context": context, "remaining_rounds": remaining_rounds},
+                ensure_ascii=False,
+            ),
             "max_output_tokens": self.config.max_output_tokens,
             "store": False,
         }
-        request = Request("https://api.openai.com/v1/responses",
-                          data=json.dumps(payload).encode("utf-8"),
-                          headers={"Authorization": f"Bearer {self.key}",
-                                   "Content-Type": "application/json"}, method="POST")
+        request = Request(
+            "https://api.openai.com/v1/responses",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
         try:
             with build_opener(NoRedirect()).open(
-                    request, timeout=self.config.timeout_seconds) as response:
+                request, timeout=self.config.timeout_seconds
+            ) as response:
                 raw = response.read().decode("utf-8")
         except HTTPError as error:
-            hints = {401: "Confira a chave de API.", 403: "Confira a permissão da conta.",
-                     404: "Confira o nome e o acesso ao modelo em configs.toml.",
-                     429: "Confira saldo/limites e tente novamente mais tarde."}
-            raise ModelError(f"API retornou HTTP {error.code}. " + hints.get(
-                error.code, "Confira a configuração e a disponibilidade da API.")) from None
+            hints = {
+                401: "Confira a chave de API.",
+                403: "Confira a permissão da conta.",
+                404: "Confira o nome e o acesso ao modelo em configs.toml.",
+                429: "Confira saldo/limites e tente novamente mais tarde.",
+            }
+            raise ModelError(
+                f"API retornou HTTP {error.code}. "
+                + hints.get(
+                    error.code, "Confira a configuração e a disponibilidade da API."
+                )
+            ) from None
         except (URLError, OSError, TimeoutError) as error:
-            raise ModelError("Falha de conexão ou timeout ao chamar o modelo.") from error
+            raise ModelError(
+                "Falha de conexão ou timeout ao chamar o modelo."
+            ) from error
         try:
             body = load_json(raw)
             if not isinstance(body, dict) or body.get("status") != "completed":
-                raise ValueError("Resposta incompleta; confira max_output_tokens e tente novamente.")
+                raise ValueError(
+                    "Resposta incompleta; confira max_output_tokens e tente novamente."
+                )
             chunks = []
             for item in body.get("output", []):
                 if item.get("type") != "message":
@@ -107,7 +128,9 @@ class OpenAIModel:
 def validate_reply(reply):
     object_keys(reply, {"questions", "plan"}, "resposta")
     texts(reply["questions"], "questions")
-    if len(reply["questions"]) > 3 or len(set(reply["questions"])) != len(reply["questions"]):
+    if len(reply["questions"]) > 3 or len(set(reply["questions"])) != len(
+        reply["questions"]
+    ):
         raise ValueError("O modelo deve retornar até 3 perguntas distintas por rodada.")
     validate_plan(reply["plan"])
     return reply
