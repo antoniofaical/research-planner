@@ -48,7 +48,7 @@ def markdown(document):
     section("Exclusão proposta", document["scope"]["exclusion"])
     section("Subperguntas", document["subquestions"])
     section(
-        "Conceitos e sinônimos candidatos",
+        "Conceitos e vocabulário candidato",
         [
             f"{item['concept']}: "
             + ("; ".join(item["synonyms"]) or "sem sinônimos definidos")
@@ -95,7 +95,8 @@ def markdown(document):
                 "",
                 fenced(item["answer"])
                 if item["answer"] is not None
-                else "Sem resposta; permanece como lacuna.",
+                else "Sem resposta direta nesta rodada; verificar eventual resolução "
+                "em outros esclarecimentos.",
                 "",
             ]
         )

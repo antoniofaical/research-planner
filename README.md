@@ -106,13 +106,14 @@ uma pasta **nova** e cria `plan.md`/`plan.json`, preservando versões existentes
 ## Esclarecimentos e revisão
 
 1. O modelo recebe o briefing integral e propõe um plano provisório. Só deve
-   perguntar se a ambiguidade impede uma formulação honesta.
-2. Cada rodada contém até três perguntas. **Enter** deixa uma resposta pendente;
+   perguntar se interpretações diferentes mudarem materialmente a pergunta, o
+   recorte ou a estratégia; pode avançar provisoriamente com a decisão em aberto.
+2. Cada rodada contém até três perguntas. **Enter** registra a pergunta sem resposta direta;
    **`/fim`** encerra esclarecimentos e solicita o plano com as lacunas restantes.
    EOF também encerra esclarecimentos. **Ctrl+C** cancela a execução.
 3. O programa aplica o limite configurado; o modelo não consegue aumentá-lo.
    São no máximo `max_clarification_rounds + 1` chamadas. A última chamada recebe
-   zero rodadas disponíveis. Perguntas que ainda aparecerem viram lacunas, sem
+   zero rodadas disponíveis. Perguntas novas que ainda aparecerem viram lacunas, sem
    novas solicitações humanas. Perguntas idênticas já feitas não são repetidas.
 4. O plano completo aparece no terminal. Responder `s` à pergunta de revisão
    registra `review_status = "reviewed"`; Enter ou EOF mantém `pending`.
@@ -137,9 +138,14 @@ retornam automaticamente ao JSON**. Para manter as duas versões sincronizadas,
 edite o JSON e use `render`.
 
 O briefing e os esclarecimentos são contexto declarado pelo solicitante, não
-evidências científicas. Perguntas puladas permanecem em `gaps` mesmo se o modelo
-as omitir. Ao editar manualmente, preserve esse histórico e documente como
-resolveu qualquer lacuna; uma resposta textual não prova um fato científico.
+evidências científicas. Uma repetição literal de pergunta já respondida não cria
+uma pendência pelo programa. Perguntas puladas ficam no histórico e em `gaps`
+com aviso neutro para verificar eventual resolução em outros esclarecimentos,
+mesmo se o modelo as omitir. Perguntas novas retornadas após o limite continuam
+como pendências. Isso não reconcilia semanticamente o texto livre gerado pelo
+modelo: a revisão humana continua necessária. Ao editar manualmente, preserve
+esse histórico e documente como resolveu qualquer lacuna; uma resposta textual
+não prova um fato científico.
 
 ## Configuração
 
@@ -179,14 +185,17 @@ exportada não são salvas em caso de falha ou cancelamento.
 | `central_question` | Explicitar o objetivo; `null` quando não for possível formulá-lo honestamente. |
 | `scope.inclusion` / `scope.exclusion` | Tornar o recorte proposto visível e editável. |
 | `subquestions` | Dividir a pergunta central em questões investigáveis. |
-| `concepts` | Relacionar cada conceito a uma lista de sinônimos candidatos. |
+| `concepts` | Relacionar conceitos e vocabulário candidato; se `synonyms` incluir termos relacionados não equivalentes, o grupo e a finalidade devem explicitar a relação. |
 | `strategies` | Associar expressão, finalidade, destino e status. |
 | `gaps` | Registrar decisões e informações pendentes sem preenchê-las por suposição. |
 
 Cada estratégia exige `expression`, `purpose`, `destination` (texto ou `null` se
 indefinido) e `status`, sempre **`proposed_untested`**. Todos os campos da tabela
-são obrigatórios no JSON, inclusive listas vazias quando justificadas. Um plano
-sem pergunta central, inclusão ou expressões exige lacuna explícita. O contrato
+são obrigatórios no JSON, mesmo quando listas vazias forem permitidas. Um plano
+sem pergunta central, inclusão, conceitos ou expressões exige lacuna explícita.
+Subperguntas podem ser dispensáveis em uma pergunta simples; sinônimos e exclusões
+não são obrigatoriamente preenchidos. A presença de texto em `gaps` não prova que
+a justificativa é adequada: essa conferência é humana. O contrato
 rejeita campos desconhecidos, chaves duplicadas, tipos inválidos e status de
 busca testada. Não inclui timestamps, IDs universais ou JSON Schema.
 

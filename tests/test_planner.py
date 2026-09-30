@@ -60,7 +60,12 @@ class PlannerTests(unittest.TestCase):
         result = build_plan(
             "Investigar estoque.", model, ask=lambda _: "", tell=lambda _: None
         )
-        self.assertIn("Esclarecimento pendente: Qual setor?", result["gaps"])
+        self.assertTrue(
+            any(
+                g.startswith("Verificar resolução: Qual setor?") for g in result["gaps"]
+            )
+        )
+        self.assertNotIn("Esclarecimento pendente: Qual setor?", result["gaps"])
         self.assertIsNone(result["request_context"]["clarifications"][0]["answer"])
         self.assertIn("Qual setor?", markdown(result))
 
@@ -141,7 +146,105 @@ class PlannerTests(unittest.TestCase):
             tell=lambda _: None,
         )
         self.assertEqual(len(prompts), 1)
-        self.assertIn("Esclarecimento pendente: Setor?", result["gaps"])
+        self.assertEqual(
+            sum(g.startswith("Verificar resolução: Setor?") for g in result["gaps"]), 1
+        )
+        self.assertNotIn("Esclarecimento pendente: Setor?", result["gaps"])
+
+    def test_answered_repetition_does_not_create_gap_even_at_round_limit(self):
+        for limit in (1, 3):
+            with self.subTest(limit=limit):
+                final = reply(["Qual país?"])
+                final["plan"]["gaps"] = []
+                model = FakeModel(reply(["Qual país?"]), final)
+                prompts = []
+                result = build_plan(
+                    "Estoque.",
+                    model,
+                    limit,
+                    lambda q: prompts.append(q) or "Brasil",
+                    lambda _: None,
+                )
+                self.assertEqual(len(prompts), 1)
+                self.assertEqual(result["gaps"], [])
+                self.assertEqual(
+                    result["request_context"]["clarifications"],
+                    [{"round": 1, "question": "Qual país?", "answer": "Brasil"}],
+                )
+                self.assertEqual(len(model.calls), 2)
+
+    def test_answered_repetition_and_new_question_at_limit(self):
+        final = reply(["Qual país?", "Qual setor?"])
+        final["plan"]["gaps"] = []
+        model = FakeModel(reply(["Qual país?"]), final)
+        result = build_plan("Estoque.", model, 1, lambda _: "Brasil", lambda _: None)
+        self.assertEqual(result["gaps"], ["Esclarecimento pendente: Qual setor?"])
+        self.assertEqual(model.calls[-1][1], 0)
+
+    def test_answered_repetition_does_not_prevent_new_question_with_rounds_left(self):
+        final = reply()
+        final["plan"]["gaps"] = []
+        model = FakeModel(
+            reply(["Qual país?"]), reply(["Qual país?", "Qual setor?"]), final
+        )
+        prompts = []
+        answers = iter(["Brasil", "Hospitalar"])
+
+        def ask(question):
+            prompts.append(question)
+            return next(answers)
+
+        result = build_plan("Estoque.", model, 3, ask, lambda _: None)
+        self.assertEqual(prompts, ["Qual país?\n> ", "Qual setor?\n> "])
+        self.assertEqual(result["gaps"], [])
+        self.assertEqual(
+            [h["answer"] for h in result["request_context"]["clarifications"]],
+            ["Brasil", "Hospitalar"],
+        )
+
+    def test_skipped_question_cross_answer_requires_neutral_review(self):
+        for later_round in (False, True):
+            with self.subTest(later_round=later_round):
+                final = reply(["Qual país?"])
+                final["plan"]["gaps"] = []
+                responses = (
+                    [reply(["Qual país?"]), reply(["Qual setor?"]), final]
+                    if later_round
+                    else [reply(["Qual país?", "Qual setor?"]), final]
+                )
+                model = FakeModel(*responses)
+                answers = iter(["", "Hospitalar, no Brasil."])
+                result = build_plan(
+                    "Estoque.", model, 2, lambda _: next(answers), lambda _: None
+                )
+                history = result["request_context"]["clarifications"]
+                self.assertIsNone(history[0]["answer"])
+                self.assertEqual(history[1]["answer"], "Hospitalar, no Brasil.")
+                self.assertEqual(len(result["gaps"]), 1)
+                self.assertTrue(
+                    result["gaps"][0].startswith("Verificar resolução: Qual país?")
+                )
+                rendered = markdown(result)
+                self.assertIn("verificar eventual resolução", rendered)
+                self.assertNotIn("Sem resposta; permanece como lacuna.", rendered)
+                self.assertNotIn("Esclarecimento pendente: Qual país?", rendered)
+                self.assertEqual(model.calls[-1][0]["clarifications"], history)
+
+    def test_unasked_final_question_and_skipped_question_keep_distinct_notices(self):
+        final = reply(["Qual país?", "Qual período?"])
+        final["plan"]["gaps"] = []
+        result = build_plan(
+            "Estoque.",
+            FakeModel(reply(["Qual país?"]), final),
+            1,
+            lambda _: "",
+            lambda _: None,
+        )
+        self.assertIn("Esclarecimento pendente: Qual período?", result["gaps"])
+        self.assertTrue(
+            any(g.startswith("Verificar resolução: Qual país?") for g in result["gaps"])
+        )
+        self.assertEqual(len(result["gaps"]), 2)
 
     def test_fully_undefined_plan_requires_gaps(self):
         minimal = {
@@ -188,6 +291,25 @@ class PlannerTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     validate_export(broken)
 
+    def test_missing_concepts_requires_gap_even_with_strategies(self):
+        document = example()
+        document.update(concepts=[], subquestions=[], gaps=[])
+        with self.assertRaises(ValueError):
+            validate_export(document)
+        document["gaps"] = [
+            "Decomposição conceitual ainda não definida; revisar os termos das estratégias."
+        ]
+        validate_export(document)
+
+    def test_simple_question_does_not_require_subquestions_or_extra_synonyms(self):
+        document = example()
+        document["central_question"] = "Como a literatura define acurácia de estoque?"
+        document["subquestions"] = []
+        document["scope"]["exclusion"] = []
+        document["concepts"] = [{"concept": "Acurácia de estoque", "synonyms": []}]
+        document["gaps"] = []
+        validate_export(document)
+
     def test_invalid_config_and_input(self):
         invalid = [
             "[planner]\nmax_clarification_rounds = -1",
@@ -228,6 +350,15 @@ class PlannerTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 export_plan(document, output)
             self.assertEqual(data.read_bytes(), before)
+
+    def test_manual_example_matches_briefing_and_rendered_markdown(self):
+        document = example()
+        briefing = (ROOT / "examples/estoque.md").read_text(encoding="utf-8")
+        self.assertEqual(document["request_context"]["briefing_markdown"], briefing)
+        self.assertIn("Exemplo didático redigido manualmente", briefing)
+        self.assertEqual(
+            (ROOT / "examples/plan.md").read_text(encoding="utf-8"), markdown(document)
+        )
 
     def test_cli_interactive_review_and_render_without_credentials(self):
         with (

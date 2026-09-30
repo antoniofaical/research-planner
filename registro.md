@@ -162,3 +162,96 @@ executado nativamente. A rotina Python compartilhada foi executada integralmente
 isso não equivale a um teste do launcher no Windows. Não houve chamada real ao
 modelo nem consultas bibliográficas neste incremento. Os bootstraps não fazem
 chamadas ao modelo nem executam o teste opt-in pago.
+
+## Iteração após auditoria metodológica — linha de base
+
+Commit inspecionado: `2e92196204a7c659ad4c253c7c6d72099d534b72`, o mesmo do parecer
+recebido. `git fetch origin` confirmou `main` nessa revisão; checkout inicialmente
+limpo. Foram lidos o handoff, o parecer completo, `AGENTS.md`, fontes de modelo,
+planejamento, validação/exportação, exemplos e testes. Os anexos não foram
+copiados para o repositório.
+
+| Achado | Revalidação antes de editar código |
+| --- | --- |
+| A1 | Aplicável: `INSTRUCTIONS` não exige distinguir limite, preferência, ausência e proposta nem explicitar a origem do recorte. |
+| A2 | Aplicável: falta orientação afirmativa ligando pergunta, finalidade e tipo de investigação. |
+| A3 | Aplicável: sem conferência de cobertura no prompt; visibilidade é prometida no exemplo sem estratégia explícita; termos relacionados agrupados como sinônimos. |
+| A4 | Reproduzido com `FakeModel`: resposta “Brasil” seguida de repetição de “Qual país?” gera pendência falsa; resposta cruzada posterior não muda o aviso categórico de ausência. |
+| A5 | Reproduzido localmente: plano com estratégias e `concepts=[]`, `subquestions=[]`, `gaps=[]` passa na validação. |
+
+Linha de base: `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v`
+executado **antes de editar código**: 22 testes passaram, sem falhas/erros/skips.
+As reproduções de A4/A5 usaram respostas simuladas e objetos em memória, sem
+credencial, chamada real ao modelo ou consulta bibliográfica.
+
+### Implementação e decisões desta iteração
+
+| Achado | Mudança delimitada | Natureza da verificação |
+| --- | --- | --- |
+| A4 — corrigido primeiro | Apenas perguntas novas retornadas ao encerrar esclarecimentos viram pendências automáticas. Repetições literais respondidas não geram lacuna. Perguntas sem resposta direta mantêm histórico e aviso neutro de verificação em `gaps` e no Markdown. | Regressões simuladas, incluindo repetição antes/no limite, mistura de repetição com pergunta nova e resposta cruzada na mesma rodada ou posterior. |
+| A1 | `INSTRUCTIONS` distingue limite, preferência, ausência e decisão de não restringir; exige origem textual e justificativa das propostas em `scope`, com confirmações pendentes em `gaps`. O exemplo diferencia decisões e proposta de exclusão. | Inspeção do prompt e exemplo manual; comportamento real do modelo ainda não avaliado. |
+| A2 | Pergunta e subperguntas ancoradas no problema, finalidade e tipo de investigação; esclarecer interpretações materialmente diferentes sem esconder a decisão em formulação genérica. | Inspeção de instruções, não avaliação empírica de saídas. |
+| A3 | Conferência de correspondência entre perguntas, conceitos e expressões; dimensões essenciais precisam de estratégia ou lacuna. `purpose` explica função e dimensão; grupos distinguem termos relacionados de sinônimos. Exemplo manual ganha vocabulário e quarta expressão para visibilidade. | Inspeção editorial e demonstração de renderização; nenhuma medida de recuperação. |
+| A5 | Ausência de conceitos também exige `gaps` não vazio. Subperguntas, exclusões e sinônimos podem ser vazios quando dispensáveis; prompt e README esclarecem essa diferença. | Testes de rejeição/aceitação estrutural. Adequação da justificativa continua dependendo de revisão humana. |
+
+Não foi necessário adiar A5 nem ampliar o JSON. A checagem deliberadamente não
+avalia se um texto qualquer em `gaps` explica corretamente a ausência de conceitos:
+isso exigiria interpretação semântica. Planos antigos com conceitos e lacunas
+simultaneamente vazios passam a exigir ajuste antes de renderizar; os campos e
+tipos do contrato permanecem iguais.
+
+O código de A4 trata **igualdade literal** de perguntas; não usa heurística de
+similaridade para decidir que uma resposta cobre outra pergunta. Também não
+apaga automaticamente lacunas em texto livre que o modelo tenha gerado: mesmo
+com as instruções melhores, contradições desse tipo ainda podem exigir revisão.
+O aviso de reconciliação não certifica ausência nem resolução da informação.
+
+`AGENTS.md` recebeu apenas dois itens na conferência final (tipo de investigação
+e esclarecimentos prévios). A renderização usa o título “Conceitos e vocabulário
+candidato”. O exemplo continua sendo redigido manualmente, explicitamente
+identificado no briefing preservado em seus dois formatos e no README.
+
+### Verificação final efetivamente executada
+
+| Comando/cenário | Resultado |
+| --- | --- |
+| `.venv/bin/python -m unittest tests.test_planner.PlannerTests -v`, após corrigir A4 e antes de alterar o prompt | 17 testes passaram; correção determinística verificada primeiro. |
+| `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v` | **30 testes passaram**, sem falhas/erros/skips. |
+| `.venv/bin/python -m ruff check .` | Todas as verificações passaram. |
+| `.venv/bin/python -m ruff format --check .` | Nenhuma mudança de formatação necessária. |
+| `env -u OPENAI_API_KEY .venv/bin/python -m research_planner render examples/plan.json --output runs/auditoria-metodologica` | Demonstração sem credencial exportou Markdown e JSON. |
+| Conferência local da demonstração | JSON validado; igualdade com o exemplo; Markdown idêntico ao renderizador; briefing integral; quatro estratégias com `proposed_untested`. |
+| `git diff --check` e revisão do diff | Sem erros de whitespace; mudanças restritas à metodologia, esclarecimentos, validação proporcional, exemplo, testes e documentação. |
+
+Os oito novos testes cobrem cinco regressões A4, duas regras proporcionais A5 e
+consistência do exemplo manual entre briefing/JSON/Markdown. Os testes existentes
+de limites 0/1/2/3/5, `/fim`, EOF, campos JSON, CLI interativo, reexportação,
+defaults e overwrite continuam passando. Duas asserções antigas foram atualizadas
+para exigir o aviso neutro no lugar da afirmação automática de pendência.
+
+O artefato `runs/auditoria-metodologica/` é local, reproduzível pelo comando acima
+em uma pasta nova, e não é versionado. O par revisado em `examples/` é versionado.
+Não foram alterados comandos, caminhos padrão (`user/user_prompt.md`,
+`user/output.md`/`.json`), sobrescrita, configurações, bootstrap ou integração HTTP.
+Não foram executados o teste pago `tests.live` nem consultas a bases bibliográficas.
+
+### Avaliação empírica futura — não realizada
+
+Manter como próximo trabalho, mediante solicitação específica, a matriz indicada
+pelo parecer. Avaliar saídas reais confrontadas com cada briefing, sem confundir
+essa avaliação com a execução de buscas em bases:
+
+| Cenário | O que ainda observar nas saídas reais |
+| --- | --- |
+| Tema muito vago | Esclarecimentos pertinentes sem inventar objeto, setor ou finalidade. |
+| Briefing detalhado | Preservação de período, preferências e permissões, sem perguntas redundantes. |
+| Premissa tendenciosa | Investigação aberta, sem incorporar a conclusão à pergunta/expressão. |
+| Finalidade ambígua | Distinção entre caracterizar, explicar, comparar e avaliar quando relevante. |
+| Área não clínica | Vocabulário pertinente sem forçar PICO clínico ou bases de saúde. |
+| Contradição na última rodada | Registro honesto da decisão pendente e aproveitamento dos últimos esclarecimentos. |
+| Resposta em outro esclarecimento ou repetição por paráfrase | Reconciliação semântica apropriada pelo modelo/analista; o código só trata repetição literal. |
+| Estoque com várias dimensões | Correspondência observável entre objetivos, vocabulário e finalidade das estratégias. |
+
+Somente uma etapa posterior nas bases escolhidas poderá avaliar sintaxe e
+recuperação. Os 30 testes, a inspeção do prompt e o exemplo manual **não validam
+a qualidade bibliográfica dos planos gerados por um LLM real**.

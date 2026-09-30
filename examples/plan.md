@@ -10,14 +10,14 @@ Como a literatura caracteriza problemas de acurácia, disponibilidade e visibili
 
 ## Inclusão proposta
 
-- Estoques físicos de materiais de consumo distribuídos entre múltiplas unidades.
-- Literatura acadêmica que investigue registros, contagens, transferências, disponibilidade ou reposição nesse contexto.
-- Sem restrição inicial de setor, país, período, idioma ou desenho de estudo, conforme o briefing.
+- Definido pelo solicitante: estoques físicos de materiais de consumo distribuídos entre múltiplas unidades.
+- Recorte proposto a partir do objetivo: literatura acadêmica sobre registros, contagens, transferências, disponibilidade, reposição ou visibilidade nesse contexto.
+- Decisão explícita do solicitante: sem restrição inicial de setor, país, período, idioma ou desenho de estudo.
 
 ## Exclusão proposta
 
-- Estoque financeiro e inventário de dados digitais.
-- Materiais exclusivamente comerciais de fornecedores, sem conteúdo de pesquisa.
+- Definido pelo solicitante: estoque financeiro e inventário de dados digitais.
+- Proposta do planejador: excluir materiais exclusivamente comerciais de fornecedores, sem conteúdo de pesquisa, em função do destino acadêmico definido; confirmar esse critério.
 
 ## Subperguntas
 
@@ -25,17 +25,18 @@ Como a literatura caracteriza problemas de acurácia, disponibilidade e visibili
 - Quais fatores são investigados em relação a faltas locais e transferências entre unidades?
 - Como disponibilidade e visibilidade do estoque são avaliadas em operações distribuídas?
 
-## Conceitos e sinônimos candidatos
+## Conceitos e vocabulário candidato
 
-- Estoque distribuído: distributed inventory; multi-location inventory; multi-site inventory; estoque distribuído; estoque em múltiplas unidades
-- Acurácia de estoque: inventory accuracy; inventory record inaccuracy; stock discrepancy; acurácia de estoque; divergência de estoque
-- Disponibilidade e movimentação: stockout; stock availability; inventory transfer; replenishment; ruptura de estoque; transferência de estoque; reposição
+- Estoque em múltiplas unidades (variantes e termos próximos candidatos): distributed inventory; multi-location inventory; multi-site inventory; estoque distribuído; estoque em múltiplas unidades
+- Acurácia e divergências de registro (termos relacionados, não equivalentes): inventory accuracy; inventory record inaccuracy; stock discrepancy; acurácia de estoque; divergência de estoque
+- Disponibilidade, movimentação e reposição (dimensões relacionadas, não sinônimos): stockout; stock availability; inventory transfer; replenishment; ruptura de estoque; transferência de estoque; reposição
+- Visibilidade do estoque (variantes candidatas): inventory visibility; stock visibility; visibilidade de estoque
 
 ## Estratégias candidatas
 
 ### Expressão 1
 
-Finalidade: Localizar estudos sobre divergências e acurácia de registros em estoques distribuídos.
+Finalidade: Focalizar a dimensão de acurácia e divergências de registros em múltiplas unidades. Acurácia, inexatidão e discrepância são termos relacionados usados como alternativas exploratórias, não sinônimos estritos.
 
 Destino/tipo de fonte: Literatura acadêmica; base específica ainda não definida. Status: proposta não testada.
 
@@ -45,7 +46,7 @@ Destino/tipo de fonte: Literatura acadêmica; base específica ainda não defini
 
 ### Expressão 2
 
-Finalidade: Explorar pesquisas sobre disponibilidade, transferências e reposição entre unidades, sem presumir causalidade.
+Finalidade: Ampliar a exploração da disponibilidade e de fatores investigados em relação a transferências e reposição. Falta, disponibilidade, transferência e reposição são dimensões relacionadas, não sinônimos; não se presume causalidade nem se exige que todas apareçam juntas.
 
 Destino/tipo de fonte: Literatura acadêmica; base específica ainda não definida. Status: proposta não testada.
 
@@ -55,7 +56,7 @@ Destino/tipo de fonte: Literatura acadêmica; base específica ainda não defini
 
 ### Expressão 3
 
-Finalidade: Explorar terminologia em português e sua contribuição à recuperação de literatura.
+Finalidade: Explorar em português acurácia, divergências, falta e transferência de estoque em múltiplas unidades, combinando termos relacionados como alternativas de investigação, não como sinônimos estritos.
 
 Destino/tipo de fonte: Literatura acadêmica; base específica ainda não definida. Status: proposta não testada.
 
@@ -63,10 +64,21 @@ Destino/tipo de fonte: Literatura acadêmica; base específica ainda não defini
 ("estoque distribuído" OR "estoque em múltiplas unidades") AND ("acurácia de estoque" OR "divergência de estoque" OR "ruptura de estoque" OR "transferência de estoque")
 ```
 
+### Expressão 4
+
+Finalidade: Focalizar a dimensão de visibilidade do estoque e sua avaliação em múltiplas unidades, com vocabulário candidato em inglês e português. A estratégia torna explícita essa dimensão da pergunta sem exigir simultaneamente termos de acurácia ou falta de materiais.
+
+Destino/tipo de fonte: Literatura acadêmica; base específica ainda não definida. Status: proposta não testada.
+
+```
+("distributed inventory" OR "multi-location inventory" OR "multi-site inventory" OR "estoque distribuído" OR "estoque em múltiplas unidades") AND ("inventory visibility" OR "stock visibility" OR "visibilidade de estoque")
+```
+
 ## Lacunas pendentes
 
-- Escolher a base bibliográfica e adaptar campos, operadores e sintaxe antes de testar as expressões.
-- Avaliar a cobertura dos sinônimos e a necessidade de termos adicionais ao testar as buscas; não há resultados de busca nesta entrega.
+- Confirmar a proposta de excluir materiais exclusivamente comerciais sem conteúdo de pesquisa; não é uma exclusão explicitamente definida pelo solicitante.
+- Escolher a base bibliográfica e adaptar campos, operadores, vocabulário e sintaxe das formulações conceituais antes de testar as expressões.
+- Avaliar nas bases a cobertura do vocabulário e a necessidade de outros termos para acurácia, disponibilidade e visibilidade. A presença de uma estratégia por dimensão não demonstra recuperação efetiva; não há resultados de busca nesta entrega.
 
 ## Contexto do solicitante — não verificado cientificamente
 
@@ -74,6 +86,8 @@ Briefing original, preservado integralmente:
 
 ```
 # Estoque distribuído
+
+Exemplo didático redigido manualmente; não é saída real de um modelo nem resultado de busca.
 
 Uma equipe de operações quer planejar uma busca bibliográfica sobre a gestão
 de estoque de materiais de consumo distribuídos entre várias unidades físicas.
