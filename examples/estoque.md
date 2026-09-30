@@ -1,5 +1,7 @@
 # Estoque distribuído
 
+Exemplo didático redigido manualmente; não é saída real de um modelo nem resultado de busca.
+
 Uma equipe de operações quer planejar uma busca bibliográfica sobre a gestão
 de estoque de materiais de consumo distribuídos entre várias unidades físicas.
 O solicitante relata diferenças entre registros e contagens, dificuldade para

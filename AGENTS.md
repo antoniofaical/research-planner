@@ -268,6 +268,10 @@ não alegue ter criado um arquivo.
 Antes de entregar um briefing, confira:
 
 - O problema e a finalidade correspondem ao pedido, sem objetivo trocado.
+- A pergunta provisória preserva o tipo de investigação necessário (caracterizar,
+  investigar fatores, comparar ou avaliar), quando essa distinção muda a busca.
+- Esclarecimentos anteriores ainda relevantes foram incorporados; uma informação
+  fornecida em outra resposta não é apresentada automaticamente como ausente.
 - Cada detalhe substantivo veio do usuário ou está identificado como proposta.
 - Relatos e hipóteses permanecem distintos de evidência científica.
 - Limites, preferências, informação ausente e decisão de não restringir não se confundem.

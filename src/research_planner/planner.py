@@ -28,7 +28,10 @@ def build_plan(briefing, model, max_rounds=3, ask=None, tell=None):
         questions = reply["questions"]
         new_questions = [q for q in questions if q not in asked]
         if remaining == 0 or not new_questions:
-            pending.extend(questions)
+            # Repetições literais já estão no histórico: não inventar pendências.
+            # Perguntas puladas recebem abaixo um aviso de reconciliação, não
+            # uma conclusão sobre o conteúdo de outras respostas.
+            pending.extend(new_questions)
             break
         rounds += 1
         tell(
@@ -48,13 +51,20 @@ def build_plan(briefing, model, max_rounds=3, ask=None, tell=None):
                 {"round": rounds, "question": question, "answer": answer or None}
             )
             asked.add(question)
-            if not answer:
-                pending.append(question)
     document = deepcopy(reply["plan"])
     for question in dict.fromkeys(pending):
         gap = f"Esclarecimento pendente: {question}"
         if gap not in document["gaps"]:
             document["gaps"].append(gap)
+    for item in context["clarifications"]:
+        if item["answer"] is None:
+            gap = (
+                f"Verificar resolução: {item['question']} — sem resposta direta "
+                f"na rodada {item['round']}; verificar eventual resolução "
+                "em outros esclarecimentos."
+            )
+            if gap not in document["gaps"]:
+                document["gaps"].append(gap)
     document["request_context"] = context
     document["review_status"] = "pending"
     validate_export(document)

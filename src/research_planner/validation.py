@@ -60,6 +60,7 @@ def validate_plan(plan):
         plan["central_question"] is None
         or not plan["strategies"]
         or not plan["scope"]["inclusion"]
+        or not plan["concepts"]
     ) and not plan["gaps"]:
         raise ValueError("Plano incompleto exige uma lacuna explícita em gaps.")
 
