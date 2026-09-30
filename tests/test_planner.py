@@ -367,17 +367,21 @@ class PlannerTests(unittest.TestCase):
             redirect_stderr(io.StringIO()),
         ):
             output = Path(tmp) / "run"
+            config = Path(tmp) / "configs.toml"
+            config.write_text(
+                "[planner]\nmax_clarification_rounds = 1\n", encoding="utf-8"
+            )
             model = FakeModel(reply(["Setor?"]), reply())
             with (
                 patch("research_planner.cli.OpenAIModel", return_value=model),
-                patch("builtins.input", side_effect=["Sem restrição", "s"]),
+                patch("builtins.input", side_effect=["Sem restrição", "s"]) as ask,
             ):
                 code = main(
                     [
                         "plan",
                         str(ROOT / "examples/estoque.md"),
                         "--config",
-                        str(ROOT / "configs.toml"),
+                        str(config),
                         "--output",
                         str(output),
                     ]
@@ -385,6 +389,12 @@ class PlannerTests(unittest.TestCase):
             self.assertEqual(code, 0)
             document = load_json((output / "plan.json").read_text(encoding="utf-8"))
             self.assertEqual(document["review_status"], "reviewed")
+            self.assertEqual(ask.call_count, 2)
+            self.assertEqual([call[1] for call in model.calls], [1, 0])
+            self.assertEqual(
+                document["request_context"]["clarifications"],
+                [{"round": 1, "question": "Setor?", "answer": "Sem restrição"}],
+            )
             document["central_question"] = "Pergunta revista pelo analista?"
             (output / "plan.json").write_text(json.dumps(document), encoding="utf-8")
             with patch(
@@ -407,12 +417,52 @@ class PlannerTests(unittest.TestCase):
                 (Path(tmp) / "edited/plan.md").read_text(encoding="utf-8"),
             )
 
+    def test_cli_zero_rounds_still_requests_review(self):
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            redirect_stdout(io.StringIO()),
+            redirect_stderr(io.StringIO()),
+        ):
+            config = Path(tmp) / "configs.toml"
+            config.write_text(
+                "[planner]\nmax_clarification_rounds = 0\n", encoding="utf-8"
+            )
+            output = Path(tmp) / "output.md"
+            model = FakeModel(reply(["Setor?"]))
+            with (
+                patch("research_planner.cli.OpenAIModel", return_value=model),
+                patch("builtins.input", return_value="s") as ask,
+            ):
+                self.assertEqual(
+                    main(
+                        [
+                            "plan",
+                            str(ROOT / "examples/estoque.md"),
+                            "--config",
+                            str(config),
+                            "--output",
+                            str(output),
+                        ]
+                    ),
+                    0,
+                )
+            ask.assert_called_once_with("Revisão do plano concluída? [s/N] ")
+            self.assertEqual([call[1] for call in model.calls], [0])
+            document = load_json(
+                output.with_suffix(".json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(document["review_status"], "reviewed")
+            self.assertEqual(document["request_context"]["clarifications"], [])
+            self.assertIn("Esclarecimento pendente: Setor?", document["gaps"])
+
     def test_cli_invalid_input_fails_before_model(self):
         with (
             tempfile.TemporaryDirectory() as tmp,
             redirect_stdout(io.StringIO()),
             redirect_stderr(io.StringIO()),
         ):
+            config = Path(tmp) / "configs.toml"
+            config.write_text("", encoding="utf-8")
             empty = Path(tmp) / "empty.md"
             empty.write_text("", encoding="utf-8")
             with patch(
@@ -425,7 +475,7 @@ class PlannerTests(unittest.TestCase):
                             "plan",
                             str(empty),
                             "--config",
-                            str(ROOT / "configs.toml"),
+                            str(config),
                             "--output",
                             str(Path(tmp) / "run"),
                         ]
@@ -438,7 +488,7 @@ class PlannerTests(unittest.TestCase):
                             "plan",
                             "absent.md",
                             "--config",
-                            str(ROOT / "configs.toml"),
+                            str(config),
                             "--output",
                             str(Path(tmp) / "run"),
                         ]

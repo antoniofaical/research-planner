@@ -255,3 +255,41 @@ essa avaliação com a execução de buscas em bases:
 Somente uma etapa posterior nas bases escolhidas poderá avaliar sintaxe e
 recuperação. Os 30 testes, a inspeção do prompt e o exemplo manual **não validam
 a qualidade bibliográfica dos planos gerados por um LLM real**.
+
+## Correção do isolamento da configuração nos testes
+
+Base inspecionada: `29ac24d` (`main`, após merge da PR #1). Checkout limpo;
+lidos `AGENTS.md`, configuração, CLI, planejamento e testes relacionados.
+O usuário relatou no Windows a falha `pending != reviewed` no teste interativo.
+Esse teste usava o `configs.toml` editável do checkout, embora simulasse respostas
+que pressupunham uma rodada de esclarecimento. Com zero rodadas, a primeira
+resposta simulada ("Sem restrição") era consumida na revisão, mantendo `pending`.
+
+A mesma falha foi reproduzida no Linux antes da correção, substituindo o retorno
+de `cli.load_config` por `Config(max_clarification_rounds=0)` no teste original.
+Isso demonstra o defeito de isolamento, mas não confirma o conteúdo do arquivo
+local do usuário nem permite atribuir a falha ao Windows.
+
+Os testes de CLI agora usam arquivos TOML temporários próprios. O cenário
+interativo fixa uma rodada e verifica o histórico, as chamadas ao modelo e o
+número de entradas consumidas. Um novo cenário com zero rodadas verifica que
+somente a revisão é solicitada, que `s` salva `reviewed` e que uma pergunta
+retornada pelo modelo permanece como lacuna. Os testes de entrada inválida
+também usam configuração temporária válida, evitando falhar pelo motivo errado.
+Nenhuma configuração do usuário nem comportamento de produção foi alterado.
+
+Verificações executadas em Python 3.12.14/Linux, sem modelo real:
+
+- `.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v`:
+  **31 testes passaram**.
+- Suíte completa em duas cópias temporárias dos arquivos do repositório, usando
+  respectivamente `configs.toml` com zero rodadas e com TOML inválido:
+  **31 testes passaram em cada cópia**; os arquivos de configuração permaneceram
+  intactos. O CLI de produção continua rejeitando configurações inválidas.
+- `.venv/bin/python -m ruff check .`: passou.
+- `.venv/bin/python -m ruff format --check .`: passou após formatar o teste editado.
+- `git diff --check`: passou.
+
+PowerShell/Windows não executados neste ambiente. O log fornecido pelo usuário
+mostra o bootstrap chegando à suíte no Windows; esta correção ainda precisa ser
+reexecutada lá. Não houve chamada paga, geração real de plano ou busca bibliográfica.
