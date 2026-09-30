@@ -1,0 +1,8 @@
+[planner]
+max_clarification_rounds = 3
+
+[model]
+name = "gpt-6-sol"
+api_key_env = "OPENAI_API_KEY"
+timeout_seconds = 180
+max_output_tokens = 12000

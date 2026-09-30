@@ -1,0 +1,82 @@
+{
+  "request_context": {
+    "briefing_markdown": "# Estoque distribuído\n\nUma equipe de operações quer planejar uma busca bibliográfica sobre a gestão\nde estoque de materiais de consumo distribuídos entre várias unidades físicas.\nO solicitante relata diferenças entre registros e contagens, dificuldade para\nacompanhar transferências e episódios de falta local apesar de haver saldo em\noutras unidades. Esses relatos são contexto operacional, não achados científicos.\n\nQueremos investigar como a literatura caracteriza esses problemas, quais fatores\ninvestiga e quais medidas usa para avaliar acurácia, disponibilidade e visibilidade\ndo estoque. Não buscamos fornecedores nem uma tecnologia previamente escolhida.\n\nIncluir literatura sobre estoques físicos em múltiplas unidades, seus registros,\nmovimentações e reposição. Excluir estoque financeiro e inventário de dados digitais.\nNão restringir setor, país, período, idioma ou desenho de estudo nesta primeira versão.\nO destino inicial será literatura acadêmica; a base específica será escolhida pelo\nanalista ao adaptar e testar as expressões. Produzir um plano revisável antes da coleta.\n",
+    "clarifications": []
+  },
+  "review_status": "pending",
+  "central_question": "Como a literatura caracteriza problemas de acurácia, disponibilidade e visibilidade de estoques físicos distribuídos entre unidades, e quais fatores e medidas utiliza para investigá-los?",
+  "scope": {
+    "inclusion": [
+      "Estoques físicos de materiais de consumo distribuídos entre múltiplas unidades.",
+      "Literatura acadêmica que investigue registros, contagens, transferências, disponibilidade ou reposição nesse contexto.",
+      "Sem restrição inicial de setor, país, período, idioma ou desenho de estudo, conforme o briefing."
+    ],
+    "exclusion": [
+      "Estoque financeiro e inventário de dados digitais.",
+      "Materiais exclusivamente comerciais de fornecedores, sem conteúdo de pesquisa."
+    ]
+  },
+  "subquestions": [
+    "Como os estudos definem e medem divergências entre registros e contagens físicas?",
+    "Quais fatores são investigados em relação a faltas locais e transferências entre unidades?",
+    "Como disponibilidade e visibilidade do estoque são avaliadas em operações distribuídas?"
+  ],
+  "concepts": [
+    {
+      "concept": "Estoque distribuído",
+      "synonyms": [
+        "distributed inventory",
+        "multi-location inventory",
+        "multi-site inventory",
+        "estoque distribuído",
+        "estoque em múltiplas unidades"
+      ]
+    },
+    {
+      "concept": "Acurácia de estoque",
+      "synonyms": [
+        "inventory accuracy",
+        "inventory record inaccuracy",
+        "stock discrepancy",
+        "acurácia de estoque",
+        "divergência de estoque"
+      ]
+    },
+    {
+      "concept": "Disponibilidade e movimentação",
+      "synonyms": [
+        "stockout",
+        "stock availability",
+        "inventory transfer",
+        "replenishment",
+        "ruptura de estoque",
+        "transferência de estoque",
+        "reposição"
+      ]
+    }
+  ],
+  "strategies": [
+    {
+      "expression": "(\"distributed inventory\" OR \"multi-location inventory\" OR \"multi-site inventory\") AND (\"inventory accuracy\" OR \"inventory record inaccuracy\" OR \"stock discrepancy\")",
+      "purpose": "Localizar estudos sobre divergências e acurácia de registros em estoques distribuídos.",
+      "destination": "Literatura acadêmica; base específica ainda não definida",
+      "status": "proposed_untested"
+    },
+    {
+      "expression": "(\"distributed inventory\" OR \"multi-location inventory\") AND (stockout OR \"stock availability\" OR \"inventory transfer\" OR replenishment)",
+      "purpose": "Explorar pesquisas sobre disponibilidade, transferências e reposição entre unidades, sem presumir causalidade.",
+      "destination": "Literatura acadêmica; base específica ainda não definida",
+      "status": "proposed_untested"
+    },
+    {
+      "expression": "(\"estoque distribuído\" OR \"estoque em múltiplas unidades\") AND (\"acurácia de estoque\" OR \"divergência de estoque\" OR \"ruptura de estoque\" OR \"transferência de estoque\")",
+      "purpose": "Explorar terminologia em português e sua contribuição à recuperação de literatura.",
+      "destination": "Literatura acadêmica; base específica ainda não definida",
+      "status": "proposed_untested"
+    }
+  ],
+  "gaps": [
+    "Escolher a base bibliográfica e adaptar campos, operadores e sintaxe antes de testar as expressões.",
+    "Avaliar a cobertura dos sinônimos e a necessidade de termos adicionais ao testar as buscas; não há resultados de busca nesta entrega."
+  ]
+}
